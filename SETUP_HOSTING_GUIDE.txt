@@ -1,0 +1,140 @@
+========================================
+PANDUAN SETUP DATABASE HOSTING
+========================================
+
+Website: https://tutung.kesug.com/test-online-system/
+Database: if0_41100811_test_online
+Host: sql313.infinityfree.com
+
+========================================
+LANGKAH 1: BUAT DATABASE BARU DI CPANEL
+========================================
+
+1. Login ke cPanel hosting Anda
+   - URL biasanya: https://tutung.kesug.com:2083 (atau panel.infinityfree.com)
+   - Username: if0_41100811
+   - Password: (sesuai yang Anda punya)
+
+2. Cari dan buka "MySQL Databases" atau "Database"
+
+3. Pada section "Create New Database":
+   - Database Name: if0_41100811_test_online
+   - Klik "Create Database"
+
+4. Tunggu sebentar... muncul pesan "Database if0_41100811_test_online created successfully"
+
+
+========================================
+LANGKAH 2: IMPORT SCHEMA MELALUI PHPMYADMIN
+========================================
+
+1. Login ke phpMyAdmin:
+   - URL: https://sql313.infinityfree.com/phpmyadmin
+   - Username: if0_41100811
+   - Password: tPLE5j8SHiTs
+
+2. Pilih database "if0_41100811_test_online" (di kiri)
+
+3. Klik tab "Import" (biasanya di bagian atas)
+
+4. Pilih file SQL untuk di-import:
+   - Klik "Choose File"
+   - Pilih file: hosting-setup.sql
+   - Klik "Go" atau "Import"
+
+5. Tunggu proses selesai... akan muncul pesan sukses
+   - Tabel akan terbuat otomatis
+   - Admin default sudah disisipkan (username: admin, password: admin123)
+   - 25 soal HSCL-25 sudah diinput
+
+
+========================================
+LANGKAH 3: VERIFIKASI KONEKSI DATABASE
+========================================
+
+1. Kunjungi: https://tutung.kesug.com/test-online-system/
+
+2. Coba login admin:
+   - URL: https://tutung.kesug.com/test-online-system/admin-login.php
+   - Username: admin
+   - Password: admin123
+   - Jika sukses → database sudah terhubung!
+
+3. Atau test connection via PHP:
+   - Buka: https://tutung.kesug.com/test-online-system/check-db.php
+   - Jika tampil "Connection successful" → database siap pakai
+
+
+========================================
+LANGKAH 4: PERSIAPAN SEBELUM LAUNCH
+========================================
+
+1. UBAH PASSWORD ADMIN (PENTING!):
+   - Login admin dengan username: admin, password: admin123
+   - Cari menu "Manage Admins"
+   - Ubah password ke yang lebih kuat
+
+2. UBAH CONFIG JIKA DIPERLUKAN:
+   - File: config/database.php
+   - Semuanya sudah benar, tidak perlu diubah
+
+3. UPLOAD FILES KE HOSTING:
+   - Gunakan FTP/FileManager di cPanel
+   - Upload semua file .php, folder admin/, assets/, config/, includes, logs/
+   - Database sudah ada, jadi cukup upload aplikasinya
+
+
+========================================
+TROUBLESHOOTING
+========================================
+
+Problem: "Connection refused" atau "Cannot connect"
+Solution: Pastikan database sudah dibuat dan schema sudah di-import
+
+
+Problem: "Table not found" 
+Solution: Cek di phpMyAdmin apakah tabel-tabel sudah ada
+- Harus ada tabel: tokens, questions, user_answers, test_results, user_profiles, admin_users
+
+
+Problem: "Access denied"
+Solution: Verifikasi credentials di config/database.php:
+- Host: sql313.infinityfree.com
+- User: if0_41100811
+- Password: tPLE5j8SHiTs
+- Database: if0_41100811_test_online
+
+
+========================================
+TESTING FLOW SETELAH LIVE
+========================================
+
+1. Test sebagai ADMIN:
+   - Login: admin / admin123
+   - Generate Token
+   - Lihat daftar tokens
+   - Manage Questions
+   - View Results
+
+2. Test sebagai USER:
+   - Gunakan token yang sudah di-generate
+   - Akses: https://tutung.kesug.com/test-online-system/index.php
+   - Masukkan token
+   - Isi data pribadi
+   - Jawab HSCL-25 questions
+   - Download hasil (PDF)
+
+3. Test SECURITY ITEMS:
+   - Login admin tidak bisa diakses tanpa password benar ✓
+   - User hasil test tidak bisa lihat identitas user lain ✓
+   - Admin bisa lihat semua data user dan hasil ✓
+
+
+========================================
+SELESAI!
+========================================
+
+Database sudah live di https://tutung.kesug.com/test-online-system/
+Aplikasi siap digunakan!
+
+Jika ada pertanyaan, cek logs di folder logs/ atau gunakan check-db.php untuk troubleshoot.
