@@ -58,6 +58,20 @@ $userAnswers = getUserAnswers($tokenId);
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     header('Content-Type: application/json');
     
+    if ($_POST['action'] === 'get_progress') {
+        $totalQuestions = $pagination->getTotalQuestions();
+        $answeredQuestions = $pagination->getAnsweredQuestions();
+        $percentage = $pagination->getProgressPercentage();
+        
+        echo json_encode([
+            'success' => true,
+            'total' => $totalQuestions,
+            'answered' => $answeredQuestions,
+            'percentage' => $percentage
+        ]);
+        exit;
+    }
+    
     if ($_POST['action'] === 'save_answer') {
         $questionId = isset($_POST['question_id']) ? intval($_POST['question_id']) : 0;
         $selectedOption = isset($_POST['selected_option']) ? strtolower($_POST['selected_option']) : '';
@@ -174,7 +188,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 // Get current page data for display
 $currentPageData = $pagination->getCurrentPageData();
 ?>
-<!DOCTYPE html>>
+<!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
@@ -190,6 +204,7 @@ $currentPageData = $pagination->getCurrentPageData();
         echo $testDisplay . ' Assessment - ' . htmlspecialchars($_SESSION['user_name']);
         ?>
     </title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="assets/css/style.css">
     <style>
         .hscl-table {
@@ -274,13 +289,16 @@ $currentPageData = $pagination->getCurrentPageData();
             color: #666;
             margin-top: 12px;
         }
+        
+        /* Icon spacing */
+        i { margin-right: 5px; }
     </style>
 </head>
 <body>
     <div class="navbar">
         <div class="navbar-container">
             <div class="navbar-brand">
-                <span class="brand-icon">◆</span>
+                <span class="brand-icon"><i class="fas fa-shapes"></i></span>
                 <span class="brand-text">ABLE.ID</span>
             </div>
             <div class="navbar-title">
@@ -291,7 +309,7 @@ $currentPageData = $pagination->getCurrentPageData();
                 } else {
                     $testDisplay = implode(' + ', $testTypes);
                 }
-                echo "📝 Assessment: " . $testDisplay;
+                echo '<i class="fas fa-clipboard-list"></i> Assessment: ' . $testDisplay;
                 ?>
             </div>
         </div>
@@ -300,14 +318,13 @@ $currentPageData = $pagination->getCurrentPageData();
     <div class="test-container">
         <div class="test-header">
             <div class="test-info">
-                <h2>📋 HSCL-25 Screening</h2>
+                <h2><i class="fas fa-clipboard-check"></i> HSCL-25 Screening</h2>
                 <p>Peserta: <strong><?= htmlspecialchars($_SESSION['user_name']) ?></strong></p>
             </div>
         </div>
 
-        <!-- Introduction Section -->
         <div class="test-intro">
-            <div class="intro-title">📋 Petunjuk Pengisian</div>
+            <div class="intro-title"><i class="fas fa-info-circle"></i> Petunjuk Pengisian</div>
             <div class="intro-text">
                 Di bawah ini terdapat beberapa pertanyaan yang dirancang untuk mengevaluasi kesehatan mental dan gaya belajar Anda. Silakan baca satu-persatu secara berhati-hati dan jawab semua pertanyaan dengan jujur.
             </div>
@@ -315,7 +332,7 @@ $currentPageData = $pagination->getCurrentPageData();
                 Berilah tanda dengan <strong>memilih opsi</strong> yang paling sesuai dengan kondisi atau preferensi Anda.
             </div>
             <div class="scoring-info">
-                <strong>📊 Informasi Penilaian:</strong><br>
+                <strong><i class="fas fa-chart-bar"></i> Informasi Penilaian:</strong><br>
                 <?php if (in_array('HSCL-25', $testTypes)): ?>
                     <strong>HSCL-25 (Mental Health Screening):</strong><br>
                     • Cut-off point: 1.75 (Turnip & Hauff, 2007)<br>
@@ -333,7 +350,6 @@ $currentPageData = $pagination->getCurrentPageData();
             </div>
         </div>
 
-        <!-- Progress Bar -->
         <div class="progress-bar">
             <div class="progress-label">
                 <span class="label">Halaman <?= $pagination->getCurrentPage() ?> dari <?= $pagination->getTotalPages() ?></span>
@@ -344,10 +360,11 @@ $currentPageData = $pagination->getCurrentPageData();
             </div>
         </div>
 
-        <!-- Questions Section -->
         <div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); margin-bottom: 20px; overflow-x: auto;">
             <div style="display: flex; align-items: center; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 2px solid #f0f0f0;">
-                <span style="font-size: 32px; margin-right: 12px;"><?= $currentPageData['icon'] ?></span>
+                <span style="font-size: 24px; margin-right: 12px; color: #667eea;">
+                    <i class="fas fa-list-ul"></i>
+                </span>
                 <div>
                     <h3 style="margin: 0 0 6px 0; color: #333; font-size: 18px; font-weight: 700;">
                         <?= $currentPageData['title'] ?>
@@ -402,25 +419,24 @@ $currentPageData = $pagination->getCurrentPageData();
             </form>
         </div>
 
-        <!-- Navigation Buttons -->
         <div class="test-actions">
             <a href="index.php" class="btn btn-secondary btn-large">
-                ← Keluar Test
+                <i class="fas fa-arrow-left"></i> Keluar Test
             </a>
             <div style="display: flex; gap: 12px;">
                 <?php if (!$pagination->isFirstPage()): ?>
                 <button type="button" class="btn btn-secondary btn-large" onclick="previousPage()">
-                    ← Halaman Sebelumnya
+                    <i class="fas fa-chevron-left"></i> Halaman Sebelumnya
                 </button>
                 <?php endif; ?>
                 
                 <?php if ($pagination->isLastPage()): ?>
                 <button type="button" class="btn btn-success btn-large" onclick="submitTest()" style="background: #27ae60;">
-                    Selesai & Lihat Hasil
+                    Selesai & Lihat Hasil <i class="fas fa-check"></i>
                 </button>
                 <?php else: ?>
                 <button type="button" class="btn btn-primary btn-large" onclick="nextPage()">
-                    Halaman Berikutnya →
+                    Halaman Berikutnya <i class="fas fa-chevron-right"></i>
                 </button>
                 <?php endif; ?>
             </div>
@@ -437,6 +453,30 @@ $currentPageData = $pagination->getCurrentPageData();
             return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
         }
         
+        function updateProgressBar() {
+            fetch('test.php', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: 'action=get_progress'
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    const percentage = data.percentage;
+                    const progressBar = document.getElementById('progress');
+                    const percentageLabel = document.getElementById('percentage');
+                    
+                    if (progressBar && percentageLabel) {
+                        // Animate progress bar
+                        progressBar.style.transition = 'width 0.5s ease-in-out';
+                        progressBar.style.width = percentage + '%';
+                        percentageLabel.textContent = percentage + '%';
+                    }
+                }
+            })
+            .catch(e => console.error('Error updating progress:', e));
+        }
+        
         function saveAnswer(questionId, option) {
             fetch('test.php', {
                 method: 'POST',
@@ -446,7 +486,7 @@ $currentPageData = $pagination->getCurrentPageData();
             .then(r => r.json())
             .then(data => {
                 if (data.success) {
-                    console.log('Jawaban disimpan untuk soal ' + questionId);
+                    updateProgressBar();
                 }
             })
             .catch(e => console.error('Error:', e));
@@ -484,7 +524,6 @@ $currentPageData = $pagination->getCurrentPageData();
             })
             .then(r => r.json())
             .then(data => {
-                console.log('Next page response:', data);
                 if (data.success) {
                     window.location.reload();
                 } else {
@@ -530,15 +569,15 @@ $currentPageData = $pagination->getCurrentPageData();
                 <div class="modal-overlay">
                     <div class="modal-content">
                         <div class="modal-header">
-                            <h3>🎯 Selesai Assessment</h3>
+                            <h3><i class="fas fa-bullseye"></i> Selesai Assessment</h3>
                         </div>
                         <div class="modal-body">
-                            <div class="modal-icon">📋</div>
+                            <div class="modal-icon"><i class="fas fa-clipboard-check"></i></div>
                             <p class="modal-message">
                                 Apakah Anda yakin ingin menyelesaikan assessment ini?
                             </p>
                             <div class="modal-warning">
-                                <strong>⚠️ Pastikan:</strong>
+                                <strong><i class="fas fa-exclamation-triangle"></i> Pastikan:</strong>
                                 <ul>
                                     <li>Semua pertanyaan sudah dijawab</li>
                                     <li>Jawaban sudah sesuai dengan kondisi Anda</li>
@@ -548,10 +587,10 @@ $currentPageData = $pagination->getCurrentPageData();
                         </div>
                         <div class="modal-actions">
                             <button class="btn btn-secondary" onclick="closeSubmitModal()">
-                                ❌ Batal
+                                <i class="fas fa-times"></i> Batal
                             </button>
                             <button class="btn btn-success" onclick="performSubmit()">
-                                ✅ Ya, Selesaikan
+                                <i class="fas fa-check"></i> Ya, Selesaikan
                             </button>
                         </div>
                     </div>
@@ -608,6 +647,7 @@ $currentPageData = $pagination->getCurrentPageData();
                 .modal-icon {
                     font-size: 48px;
                     margin-bottom: 16px;
+                    color: #667eea;
                 }
 
                 .modal-message {
@@ -651,6 +691,10 @@ $currentPageData = $pagination->getCurrentPageData();
                     padding: 12px 16px;
                     font-size: 14px;
                     font-weight: 600;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 6px;
                 }
 
                 @keyframes fadeIn {
@@ -727,15 +771,15 @@ $currentPageData = $pagination->getCurrentPageData();
                 <div class="modal-overlay">
                     <div class="modal-content">
                         <div class="modal-header">
-                            <h3>⚠️ Pertanyaan Belum Lengkap</h3>
+                            <h3><i class="fas fa-exclamation-triangle"></i> Pertanyaan Belum Lengkap</h3>
                         </div>
                         <div class="modal-body">
-                            <div class="modal-icon" style="font-size: 48px;">📝</div>
+                            <div class="modal-icon" style="font-size: 48px; color: #ffc107;"><i class="fas fa-edit"></i></div>
                             <p class="modal-message">
                                 Anda masih memiliki pertanyaan yang belum dijawab.
                             </p>
                             <div class="modal-warning" style="background: #fff3cd; border-left: 4px solid #ffc107;">
-                                <strong>⚠️ Perhatian:</strong>
+                                <strong><i class="fas fa-exclamation-circle"></i> Perhatian:</strong>
                                 <p style="margin: 8px 0; font-size: 14px;">
                                     Silakan jawab semua pertanyaan sebelum menyelesaikan assessment.
                                 </p>
@@ -743,7 +787,7 @@ $currentPageData = $pagination->getCurrentPageData();
                         </div>
                         <div class="modal-actions">
                             <button class="btn btn-primary" onclick="closeIncompleteModal()">
-                                ✓ Oke, Kembali Mengerjakan
+                                <i class="fas fa-check"></i> Oke, Kembali Mengerjakan
                             </button>
                         </div>
                     </div>

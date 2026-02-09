@@ -1,351 +1,180 @@
 <?php
 session_start();
+require_once '../includes/functions.php';
+require_once '../config/database.php';
 
-// Check if admin is logged in
-if (!isset($_SESSION['admin_username'])) {
-    header('Location: ../admin-login.php');
+// Admin authentication check
+if (!isset($_SESSION['admin_logged_in'])) {
+    header("Location: ../admin-login.php");
     exit;
 }
-
-require_once '../config/database.php';
-require_once '../includes/logger.php';
 
 $db = getDBConnection();
-$logger = getLogger($db);
+$limit = 50;
+$page = isset($_GET['page']) ? intval($_GET['page']) : 1;
+$offset = ($page - 1) * $limit;
 
-$action = isset($_GET['action']) ? $_GET['action'] : 'dashboard';
+// Filter logs
+$type = isset($_GET['type']) ? $_GET['type'] : 'all';
+$where = "1=1";
+$params = [];
 
-// Handle backup action
-if ($action === 'backup' && isset($_GET['type'])) {
-    $backupType = $_GET['type'];
-    if ($backupType === 'database') {
-        $logger->backupDatabase();
-        $_SESSION['message'] = '✅ Database backup created successfully!';
-        header('Location: logs.php?action=dashboard');
-        exit;
-    }
+if ($type !== 'all') {
+    $where .= " AND action_type = ?";
+    $params[] = $type;
 }
 
-// Handle daily report
-if ($action === 'report') {
-    $logger->generateDailySummary();
-    $_SESSION['message'] = '✅ Daily summary report generated!';
-    header('Location: logs.php?action=dashboard');
-    exit;
-}
+// Get total logs
+$countStmt = $db->prepare("SELECT COUNT(*) as total FROM admin_logs WHERE $where");
+$countStmt->execute($params);
+$totalLogs = $countStmt->fetch()['total'];
+$totalPages = ceil($totalLogs / $limit);
+
+// Get logs
+$logsStmt = $db->prepare("
+    SELECT * FROM admin_logs 
+    WHERE $where 
+    ORDER BY created_at DESC 
+    LIMIT $limit OFFSET $offset
+");
+$logsStmt->execute($params);
+$logs = $logsStmt->fetchAll();
+
+// Get distinct action types for filter
+$typesStmt = $db->query("SELECT DISTINCT action_type FROM admin_logs ORDER BY action_type");
+$actionTypes = $typesStmt->fetchAll(PDO::FETCH_COLUMN);
 ?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>System Logs & Backup - ABLE.ID Admin</title>
+    <title>System Logs - Admin</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="../assets/css/style.css">
     <link rel="stylesheet" href="../assets/css/admin.css">
-    <style>
-        .logs-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        
-        .log-section {
-            background: white;
-            border-radius: 12px;
-            padding: 24px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-        }
-        
-        .section-title {
-            font-size: 18px;
-            font-weight: 700;
-            color: #333;
-            margin-bottom: 16px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .section-title::before {
-            content: '';
-            width: 4px;
-            height: 20px;
-            background: #667eea;
-            border-radius: 2px;
-        }
-        
-        .log-actions {
-            display: flex;
-            gap: 12px;
-            margin-bottom: 16px;
-            flex-wrap: wrap;
-        }
-        
-        .log-actions .btn {
-            padding: 10px 16px;
-            font-size: 13px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.3s ease;
-        }
-        
-        .btn-primary {
-            background: #667eea;
-            color: white;
-        }
-        
-        .btn-primary:hover {
-            background: #5568d3;
-            transform: translateY(-2px);
-        }
-        
-        .btn-secondary {
-            background: #f0f2f5;
-            color: #333;
-        }
-        
-        .btn-secondary:hover {
-            background: #e4e6eb;
-        }
-        
-        .log-display {
-            background: #1e1e1e;
-            color: #00ff00;
-            padding: 16px;
-            border-radius: 8px;
-            font-family: 'Courier New', monospace;
-            font-size: 12px;
-            line-height: 1.5;
-            max-height: 400px;
-            overflow-y: auto;
-            border: 1px solid #333;
-        }
-        
-        .log-display::-webkit-scrollbar {
-            width: 8px;
-        }
-        
-        .log-display::-webkit-scrollbar-track {
-            background: #333;
-        }
-        
-        .log-display::-webkit-scrollbar-thumb {
-            background: #667eea;
-            border-radius: 4px;
-        }
-        
-        .log-display::-webkit-scrollbar-thumb:hover {
-            background: #5568d3;
-        }
-        
-        .log-stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 12px;
-            margin-bottom: 20px;
-        }
-        
-        .stat-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 16px;
-            border-radius: 8px;
-            text-align: center;
-        }
-        
-        .stat-value {
-            font-size: 28px;
-            font-weight: 700;
-            margin-bottom: 4px;
-        }
-        
-        .stat-label {
-            font-size: 12px;
-            opacity: 0.9;
-        }
-        
-        .no-data {
-            padding: 40px;
-            text-align: center;
-            color: #999;
-        }
-        
-        .alert {
-            padding: 12px 16px;
-            border-radius: 6px;
-            margin-bottom: 16px;
-        }
-        
-        .alert-success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-        
-        .backup-info {
-            background: #f8f9fa;
-            padding: 12px;
-            border-radius: 6px;
-            font-size: 13px;
-            color: #666;
-            margin-top: 12px;
-        }
-    </style>
 </head>
 <body>
-    <div class="navbar">
-        <div class="navbar-container">
-            <div class="navbar-brand">
-                <span class="brand-icon">◆</span>
-                <span class="brand-text">ABLE.ID</span>
+    <div class="admin-wrapper">
+        <aside class="admin-sidebar">
+            <div class="sidebar-brand">
+                <h3><i class="fas fa-shapes"></i> ABLE.ID</h3>
             </div>
-            <div class="navbar-menu">
-                <a href="index.php" class="navbar-link">Dashboard</a>
-                <a href="manage-questions.php" class="navbar-link">Questions</a>
-                <a href="manage-tokens.php" class="navbar-link">Tokens</a>
-                <a href="view-results.php" class="navbar-link">Results</a>
-                <a href="logs.php" class="navbar-link active">Logs</a>
-                <a href="../logout.php" class="navbar-link logout">Logout</a>
+            <div class="sidebar-section-title">Menu</div>
+            <nav class="sidebar-nav">
+                <a href="index.php" class="nav-item"><span><i class="fas fa-chart-line"></i></span> Dashboard</a>
+                <a href="generate-token.php" class="nav-item"><span><i class="fas fa-key"></i></span> Generate Token</a>
+                <a href="manage-tokens.php" class="nav-item"><span><i class="fas fa-list-alt"></i></span> Kelola Token</a>
+            </nav>
+            <div class="sidebar-section-title">Data</div>
+            <nav class="sidebar-nav">
+                <a href="manage-questions.php" class="nav-item"><span><i class="fas fa-question-circle"></i></span> Kelola Soal</a>
+                <a href="view-results.php" class="nav-item"><span><i class="fas fa-poll"></i></span> Lihat Hasil</a>
+            </nav>
+            <div class="sidebar-section-title">Lainnya</div>
+            <nav class="sidebar-nav">
+                <a href="logs.php" class="nav-item active"><span><i class="fas fa-history"></i></span> System Logs</a>
+                <a href="database-maintenance.php" class="nav-item"><span><i class="fas fa-tools"></i></span> Database Maint.</a>
+                <a href="../index.php" class="nav-item"><span><i class="fas fa-home"></i></span> Ke Website</a>
+                <a href="admin-logout.php" class="nav-item nav-logout"><span><i class="fas fa-sign-out-alt"></i></span> Logout</a>
+            </nav>
+        </aside>
+
+        <div class="admin-main">
+            <div class="admin-topbar">
+                <div class="admin-topbar-left"><i class="fas fa-history"></i> System Activity Logs</div>
+                <div class="admin-topbar-right">
+                    <a href="logs.php" class="btn btn-primary" style="font-size: 12px; padding: 8px 16px;">
+                        <i class="fas fa-sync"></i> Refresh
+                    </a>
+                </div>
+            </div>
+
+            <div class="admin-content">
+                <div class="card">
+                    <div style="padding: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+                        <h3 style="margin: 0; font-size: 16px;"><i class="fas fa-list-ul"></i> Riwayat Aktivitas</h3>
+                        
+                        <form method="GET" style="display: flex; gap: 10px;">
+                            <select name="type" onchange="this.form.submit()" style="padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
+                                <option value="all">Semua Aktivitas</option>
+                                <?php foreach ($actionTypes as $act): ?>
+                                    <option value="<?= htmlspecialchars($act) ?>" <?= $type === $act ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($act) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </form>
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 20%;"><i class="fas fa-clock"></i> Waktu</th>
+                                    <th style="width: 15%;"><i class="fas fa-user"></i> Admin</th>
+                                    <th style="width: 15%;"><i class="fas fa-tag"></i> Tipe</th>
+                                    <th style="width: 35%;"><i class="fas fa-info-circle"></i> Detail</th>
+                                    <th style="width: 15%;"><i class="fas fa-laptop"></i> IP Address</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if (count($logs) > 0): ?>
+                                    <?php foreach ($logs as $log): ?>
+                                    <tr>
+                                        <td style="color: #666; font-size: 13px;">
+                                            <?= date('d/m/Y H:i:s', strtotime($log['created_at'])) ?>
+                                        </td>
+                                        <td>
+                                            <strong><?= htmlspecialchars($log['admin_username'] ?? 'System') ?></strong>
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-info" style="font-size: 11px;">
+                                                <?= htmlspecialchars($log['action_type']) ?>
+                                            </span>
+                                        </td>
+                                        <td style="color: #444;">
+                                            <?= htmlspecialchars($log['details']) ?>
+                                        </td>
+                                        <td style="font-family: monospace; color: #666;">
+                                            <?= htmlspecialchars($log['ip_address']) ?>
+                                        </td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <tr>
+                                        <td colspan="5" style="text-align: center; padding: 40px; color: #999;">
+                                            <i class="fas fa-inbox" style="font-size: 32px; margin-bottom: 10px;"></i><br>
+                                            Tidak ada log aktivitas
+                                        </td>
+                                    </tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <?php if ($totalPages > 1): ?>
+                <div style="display: flex; justify-content: center; gap: 8px; margin-top: 24px;">
+                    <?php if ($page > 1): ?>
+                        <a href="?page=<?= $page - 1 ?>&type=<?= $type ?>" class="btn btn-secondary">
+                            <i class="fas fa-chevron-left"></i> Prev
+                        </a>
+                    <?php endif; ?>
+                    
+                    <span class="btn btn-secondary" style="background: #e9ecef; cursor: default;">
+                        Halaman <?= $page ?> / <?= $totalPages ?>
+                    </span>
+                    
+                    <?php if ($page < $totalPages): ?>
+                        <a href="?page=<?= $page + 1 ?>&type=<?= $type ?>" class="btn btn-secondary">
+                            Next <i class="fas fa-chevron-right"></i>
+                        </a>
+                    <?php endif; ?>
+                </div>
+                <?php endif; ?>
             </div>
         </div>
     </div>
-
-    <div class="logs-container">
-        <div style="margin-bottom: 24px;">
-            <h1>📊 System Logs & Backup</h1>
-            <p style="color: #666; margin-top: 8px;">Monitor system activities, view logs, and manage database backups</p>
-        </div>
-
-        <?php if (isset($_SESSION['message'])): ?>
-        <div class="alert alert-success">
-            <?= $_SESSION['message'] ?>
-        </div>
-        <?php unset($_SESSION['message']); endif; ?>
-
-        <!-- Quick Stats -->
-        <?php
-        $todayTests = $db->query("SELECT COUNT(*) as count FROM test_results WHERE DATE(completed_at) = CURDATE()")->fetch()['count'];
-        $totalTests = $db->query("SELECT COUNT(*) as count FROM test_results")->fetch()['count'];
-        $activeTokens = $db->query("SELECT COUNT(*) as count FROM tokens WHERE is_used = 0 AND expires_at > NOW()")->fetch()['count'];
-        ?>
-        <div class="log-stats">
-            <div class="stat-card">
-                <div class="stat-value"><?= $todayTests ?></div>
-                <div class="stat-label">Tests Today</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value"><?= $totalTests ?></div>
-                <div class="stat-label">Total Tests</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value"><?= $activeTokens ?></div>
-                <div class="stat-label">Active Tokens</div>
-            </div>
-        </div>
-
-        <!-- Backup & Reports Section -->
-        <div class="log-section">
-            <div class="section-title">🗄️ Database Backup & Reports</div>
-            <div class="log-actions">
-                <a href="?action=backup&type=database" class="btn btn-primary">📥 Backup Database</a>
-                <a href="?action=report" class="btn btn-primary">📊 Generate Daily Report</a>
-            </div>
-            <div class="backup-info">
-                <strong>ℹ️ Info:</strong> Backups are stored as SQL files in the logs/backups directory. Daily reports are stored in logs/reports directory.
-            </div>
-        </div>
-
-        <!-- Test Submissions Log -->
-        <div class="log-section">
-            <div class="section-title">📝 Test Submissions Log</div>
-            <div class="log-actions">
-                <a href="?action=view&log=test_submissions" class="btn btn-secondary">View Full Log</a>
-            </div>
-            <div class="log-display" id="test-submissions">
-                <?php 
-                $logContent = $logger->getLogContents('test_submissions');
-                if ($logContent) {
-                    $lines = array_slice(explode("\n", $logContent), -20); // Show last 20 lines
-                    echo htmlspecialchars(implode("\n", $lines));
-                } else {
-                    echo "No test submissions logged yet.";
-                }
-                ?>
-            </div>
-        </div>
-
-        <!-- Admin Actions Log -->
-        <div class="log-section">
-            <div class="section-title">👨‍💼 Admin Actions Log</div>
-            <div class="log-display">
-                <?php 
-                $logContent = $logger->getLogContents('admin_actions');
-                if ($logContent) {
-                    $lines = array_slice(explode("\n", $logContent), -20); // Show last 20 lines
-                    echo htmlspecialchars(implode("\n", $lines));
-                } else {
-                    echo "No admin actions logged yet.";
-                }
-                ?>
-            </div>
-        </div>
-
-        <!-- Token Generation Log -->
-        <div class="log-section">
-            <div class="section-title">🎫 Token Generation Log</div>
-            <div class="log-display">
-                <?php 
-                $logContent = $logger->getLogContents('token_generation');
-                if ($logContent) {
-                    $lines = array_slice(explode("\n", $logContent), -20); // Show last 20 lines
-                    echo htmlspecialchars(implode("\n", $lines));
-                } else {
-                    echo "No tokens generated yet.";
-                }
-                ?>
-            </div>
-        </div>
-
-        <!-- Error Log -->
-        <div class="log-section">
-            <div class="section-title">⚠️ Error Log</div>
-            <div class="log-display">
-                <?php 
-                $logContent = $logger->getLogContents('error');
-                if ($logContent) {
-                    $lines = array_slice(explode("\n", $logContent), -20); // Show last 20 lines
-                    echo htmlspecialchars(implode("\n", $lines));
-                } else {
-                    echo "No errors logged.";
-                }
-                ?>
-            </div>
-        </div>
-
-        <!-- User Authentication Log -->
-        <div class="log-section">
-            <div class="section-title">🔐 User Authentication Log</div>
-            <div class="log-display">
-                <?php 
-                $logContent = $logger->getLogContents('user_authentication');
-                if ($logContent) {
-                    $lines = array_slice(explode("\n", $logContent), -20); // Show last 20 lines
-                    echo htmlspecialchars(implode("\n", $lines));
-                } else {
-                    echo "No authentication logs yet.";
-                }
-                ?>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        // Auto-scroll to bottom of log displays
-        document.querySelectorAll('.log-display').forEach(el => {
-            el.scrollTop = el.scrollHeight;
-        });
-    </script>
 </body>
 </html>

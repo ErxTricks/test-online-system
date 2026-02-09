@@ -225,27 +225,8 @@ function getTestResult($tokenId) {
 
 // Cek sisa waktu test
 function getRemainingTime($tokenId) {
-    $db = getDBConnection();
-    $stmt = $db->prepare("
-        SELECT test_started_at, test_completed_at 
-        FROM tokens 
-        WHERE id = ?
-    ");
-    $stmt->execute([$tokenId]);
-    $token = $stmt->fetch();
-    
-    if (!$token || !$token['test_started_at'] || $token['test_completed_at']) {
-        return 0;
-    }
-    
-    $startTime = strtotime($token['test_started_at']);
-    $currentTime = time();
-    $elapsed = $currentTime - $startTime;
-    $remaining = (TEST_DURATION * 60) - $elapsed;
-    
-    return max(0, $remaining);
+    return 999999; // unlimited time - no time limit
 }
-
 // Format waktu
 function formatTime($seconds) {
     $minutes = floor($seconds / 60);

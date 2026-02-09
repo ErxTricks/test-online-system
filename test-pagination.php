@@ -20,15 +20,12 @@ class TestPagination {
     
     /**
      * Build the page structure based on test types and questions
-     * Pages structure:
-     * - HSCL-25 only: Page 1 (Anxiety 1-10), Page 2 (Depresi 11-25)
-     * - VAK only: Page 1 (Visual), Page 2 (Auditory + Kinesthetic)
-     * - Both: Page 1 (Anxiety), Page 2 (Depresi), Page 3 (Visual), Page 4 (Auditory+Kinesthetic)
      */
     private function buildPagesMap($allQuestions) {
         $pageNum = 1;
         $this->questionsMap = [];
         
+        // --- LOGIKA HSCL-25 ---
         if (in_array('HSCL-25', $this->testTypes)) {
             // Page 1: Anxiety (HSCL Items 1-10)
             $anxietyQ = array_filter($allQuestions, function($q) {
@@ -39,7 +36,7 @@ class TestPagination {
                     'title' => 'ANXIETY (Kecemasan) - Items 1-10',
                     'description' => 'HSCL-25: Kelompok pertanyaan tentang kecemasan dan kekhawatiran',
                     'questions' => array_values($anxietyQ),
-                    'icon' => '😰',
+                    'icon' => 'fas fa-head-side-virus',
                     'type' => 'HSCL-25'
                 ];
                 $pageNum++;
@@ -54,13 +51,14 @@ class TestPagination {
                     'title' => 'DEPRESI (Kesedihan) - Items 11-25',
                     'description' => 'HSCL-25: Kelompok pertanyaan tentang depresi dan kesedihan',
                     'questions' => array_values($depressionQ),
-                    'icon' => '😢',
+                    'icon' => 'fas fa-cloud-rain',
                     'type' => 'HSCL-25'
                 ];
                 $pageNum++;
             }
         }
         
+        // --- LOGIKA VAK ---
         if (in_array('VAK', $this->testTypes)) {
             // Page N: Visual
             $visualQ = array_filter($allQuestions, function($q) {
@@ -71,7 +69,7 @@ class TestPagination {
                     'title' => 'VISUAL (Pembelajaran Visual)',
                     'description' => 'VAK: Pertanyaan tentang preferensi belajar visual',
                     'questions' => array_values($visualQ),
-                    'icon' => '🎨',
+                    'icon' => 'fas fa-eye',
                     'type' => 'VAK'
                 ];
                 $pageNum++;
@@ -93,9 +91,29 @@ class TestPagination {
                     'title' => 'AUDITORY & KINESTHETIC',
                     'description' => 'VAK: Pertanyaan tentang preferensi belajar auditori & kinestik',
                     'questions' => $combinedQ,
-                    'icon' => '🎧',
+                    'icon' => 'fas fa-headphones',
                     'type' => 'VAK'
                 ];
+                $pageNum++; // Jangan lupa increment pageNum
+            }
+        }
+
+        // --- LOGIKA DISC (BARU DITAMBAHKAN) ---
+        if (in_array('DISC', $this->testTypes)) {
+            // Ambil semua soal yang test_type-nya 'DISC'
+            $discQ = array_filter($allQuestions, function($q) {
+                return isset($q['test_type']) && $q['test_type'] === 'DISC';
+            });
+
+            if (!empty($discQ)) {
+                $this->questionsMap[$pageNum] = [
+                    'title' => 'DISC PERSONALITY TEST',
+                    'description' => 'Pilihlah jawaban yang paling menggambarkan diri Anda (Skala 1-4: 1 = Paling Tidak Mirip, 4 = Paling Mirip)',
+                    'questions' => array_values($discQ),
+                    'icon' => 'fas fa-users', // Ikon user group
+                    'type' => 'DISC'
+                ];
+                $pageNum++;
             }
         }
         
@@ -154,10 +172,40 @@ class TestPagination {
     }
     
     public function getProgressPercentage() {
-        if ($this->totalPages === 0) {
+        // Get total number of questions across all pages
+        $totalQuestions = 0;
+        foreach ($this->questionsMap as $page) {
+            $totalQuestions += count($page['questions']);
+        }
+        
+        if ($totalQuestions === 0) {
             return 0;
         }
-        return round(($this->currentPage / $this->totalPages) * 100);
+        
+        // Get number of answered questions
+        $db = getDBConnection();
+        $stmt = $db->prepare("SELECT COUNT(*) as answered FROM user_answers WHERE token_id = ?");
+        $stmt->execute([$this->tokenId]);
+        $result = $stmt->fetch();
+        $answeredQuestions = $result['answered'] ?? 0;
+        
+        return round(($answeredQuestions / $totalQuestions) * 100);
+    }
+    
+    public function getTotalQuestions() {
+        $total = 0;
+        foreach ($this->questionsMap as $page) {
+            $total += count($page['questions']);
+        }
+        return $total;
+    }
+    
+    public function getAnsweredQuestions() {
+        $db = getDBConnection();
+        $stmt = $db->prepare("SELECT COUNT(*) as answered FROM user_answers WHERE token_id = ?");
+        $stmt->execute([$this->tokenId]);
+        $result = $stmt->fetch();
+        return $result['answered'] ?? 0;
     }
 }
 ?>

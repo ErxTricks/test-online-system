@@ -1,12 +1,12 @@
 <?php
 // Konfigurasi Database
-define('DB_HOST', 'localhost');
-define('DB_USER', 'root');
-define('DB_PASS', '');
-define('DB_NAME', 'test_online_system');
+define('DB_HOST', 'sql313.infinityfree.com');
+define('DB_USER', 'if0_41100811');
+define('DB_PASS', 'tPLE5j8SHiTs'); // Password MySQL Anda
+define('DB_NAME', 'if0_41100811_test_online_system');
 
 // Durasi test dalam menit
-define('TEST_DURATION', 30);
+define('TEST_DURATION', 0);
 
 // Masa aktif token dalam hari
 define('TOKEN_EXPIRY_DAYS', 30);

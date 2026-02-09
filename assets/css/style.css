@@ -603,6 +603,7 @@ body {
     gap: 12px;
 }
 
+/* --- PERBAIKAN: Option (Hapus kode option lama, ganti dengan ini) --- */
 .option {
     display: flex;
     align-items: center;
@@ -613,8 +614,6 @@ body {
     transition: all 0.3s ease;
     background: #fafafa;
 }
-    background: white;
-}
 
 .option:hover {
     border-color: #667eea;
@@ -622,6 +621,37 @@ body {
     transform: translateX(4px);
 }
 
+/* --- TAMBAHAN BARU: Agar Icon Font Awesome Rapi --- */
+
+/* 1. Mengatur Posisi Icon di dalam Input */
+.input-group-icon {
+    position: relative; /* Penting agar icon tidak lari keluar */
+}
+
+.input-group-icon i {
+    position: absolute;
+    left: 12px;
+    top: 38px; /* Jarak dari atas agar pas di tengah input */
+    color: #aaa;
+    font-size: 16px;
+    pointer-events: none; /* Agar icon bisa diklik tembus ke input */
+    z-index: 5;
+}
+
+/* 2. Memberi Jarak Teks Input agar tidak menabrak Icon */
+.input-group-icon input, 
+.input-group-icon select {
+    padding-left: 40px !important; /* Geser teks ke kanan */
+}
+
+/* 3. Merapikan Icon Brand di Navbar */
+.navbar-brand {
+    gap: 10px;
+}
+.brand-icon i {
+    font-size: 24px;
+    color: #667eea;
+}
 .option input[type="radio"] {
     width: 20px;
     height: 20px;
@@ -904,4 +934,42 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
     background: rgba(102, 126, 234, 0.7);
+}
+
+/* Update agar login container benar-benar di tengah */
+.login-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    width: 100%;
+    padding: 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); /* Pastikan background full */
+}
+
+.login-card {
+    width: 100%;
+    max-width: 600px; /* Lebar maksimal card */
+    margin: 0 auto;   /* Tengahkan secara horizontal */
+    background: white;
+    border-radius: 12px;
+    padding: 40px;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+}
+
+/* Pastikan input group rapi */
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* Dua kolom */
+    gap: 20px;
+}
+
+/* Responsive untuk HP (satu kolom) */
+@media (max-width: 600px) {
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+    .login-card {
+        padding: 20px;
+    }
 }
